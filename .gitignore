@@ -23,6 +23,7 @@ runs/
 # ===== Java 端 server（SpringBoot + Maven）=====
 target/
 HELP.md
+uploads/
 
 # ===== 前端 web（Vue + Vite + npm）=====
 node_modules/

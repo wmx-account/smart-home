@@ -1,7 +1,7 @@
 # 项目交接手册（PROJECT_CONTEXT）
 
 > 本文件是项目的唯一权威上下文。任何新对话 / 新 Agent / 新设备接手时，**先读本文件和 README，再看 `git log`**，然后按"当前进度与下一步"继续。每完成一个阶段必须更新本文件并提交。
-> 最近更新：2026-09-17，阶段 2 已完成并真机联调通过（Java 8080 → Python 8000 链路）
+> 最近更新：2026-09-17，阶段 3 已完成并真机联调通过（检测落库 MySQL、历史分页/详情、图片存储、Swagger 文档）
 
 ---
 
@@ -60,9 +60,13 @@
 - 另有 `GET /health` 健康检查；在线文档 `/docs`。
 
 ### Java 业务层接口（前端只对接这里，端口 8080）
-- `POST /api/detect`（multipart）：字段 `file`、`modelName`（默认 yolo11n.pt）、`conf`（默认 0.25）；内部由 RestClient 转发到 AI 服务 `/detect`（对外驼峰、对内转下划线 model_name），响应体结构与 AI 服务一致。
+- `POST /api/detect`（multipart）：字段 `file`、`modelName`（默认 yolo11n.pt）、`conf`（默认 0.25）；内部 RestClient 转发 AI 服务，**成功后保存图片到 uploads/ 并向 detect_record 表落一条记录**。返回 `data: {recordId, imageUrl:"/uploads/年月/xxx.jpg", detect:{...AI 的 data...}}`（阶段3起结构变化，前端按此对接）。
+- `GET /api/records?pageNum=1&pageSize=10`：检测历史分页（时间倒序），返回 `{total,pageNum,pageSize,pages,list}`；列表不含 resultJson 大字段。
+- `GET /api/records/{id}`：检测详情，含完整 resultJson（Mapper 手写 `@Select("SELECT * ...")`，绕过实体 `@TableField(select=false)`）。
+- `GET /uploads/**`：上传图片静态资源映射（file:./uploads/，须在 server/ 目录启动）。
 - `GET /api/health`：返回自身状态并探活下游 ai-platform。
-- 统一响应 `{code,msg,data}`；全局异常：空文件/非图片 400、AI 服务连不通 503、文件超限 400。
+- 在线接口文档：`http://127.0.0.1:8080/swagger-ui/index.html`（springdoc，对标 FastAPI /docs）。
+- 统一响应 `{code,msg,data}`；全局异常：空文件/非图片 400、记录不存在 404、AI 服务连不通 503、文件超限 400。
 
 ## 5. 目录结构
 
@@ -85,17 +89,24 @@ Smart Home/
 │   │   ├── bvn.yaml             # 数据集配置
 │   │   └── dataset/{images,labels}/{train,val}/
 │   └── requirements.txt
-├── server/                      # SpringBoot 3.3.5 + Java 17（阶段2已完成）
+├── server/                      # SpringBoot 3.3.5 + Java 17 + MyBatis-Plus 3.5.9
 │   ├── pom.xml
+│   ├── uploads/年月/uuid.jpg     # 检测图片（gitignore，不提交）
 │   └── src/main/
 │       ├── java/com/smarthome/
 │       │   ├── SmartHomeApplication.java        # 启动类
 │       │   ├── common/   ApiResponse / BusinessException / GlobalExceptionHandler
-│       │   ├── config/   AiServiceProperties / RestClientConfig / WebConfig(CORS)
+│       │   ├── config/   RestClientConfig / WebConfig(CORS+静态资源) / MybatisPlusConfig(分页)
 │       │   ├── client/   AiDetectClient（RestClient 转发 multipart）
-│       │   ├── service/  DetectService（校验+编排）
-│       │   └── controller/ DetectController（/api/detect、/api/health）
-│       └── resources/application.yml（端口8080、multipart 10MB、ai.service.url）
+│       │   ├── entity/   DetectRecord（@TableName 映射 detect_record）
+│       │   ├── mapper/   DetectRecordMapper（extends BaseMapper + selectDetailById）
+│       │   ├── service/  DetectService(编排) / RecordService(落库/分页/详情) / FileStorageService(图片存储)
+│       │   ├── vo/       DetectResultVO（recordId/imageUrl/detect）
+│       │   └── controller/ DetectController（detect、records、records/{id}、health）
+│       └── resources/
+│           ├── application.yml        # 端口/数据源(无密码)/MP/springdoc/上传目录（提交）
+│           ├── application-local.yml  # 数据库密码（gitignore，不提交）
+│           └── db/schema.sql          # 建库建表脚本（提交）
 └── web/                         # Vue3（阶段4，空）
 ```
 
@@ -109,7 +120,8 @@ Smart Home/
 - JDK 17：复用 IDEA 自带 JBR 17.0.9（含 javac），已设用户级 JAVA_HOME=`D:\web应用程序设计与开发课程\IntelliJ IDEA 2023.3.2\jbr`（后续可换独立 Temurin 17）
 - Maven 3.9.9：`D:\apache-maven-3.9.9-bin\apache-maven-3.9.9`，已设 MAVEN_HOME/PATH；用户级 `C:\Users\王\.m2\settings.xml` 已配阿里云镜像（mirrorOf=*，含 JDK-1.8 默认 profile，pom 已显式锁 17 不受影响）
 - **Maven 本地仓库已迁到纯英文路径 `D:/m2/repository`**（settings.xml 中 `<localRepository>` 指定；旧 `C:\Users\王\.m2\repository` 309MB 保留未删，稳定后可删）。原因见阶段2踩坑：中文用户名导致 spring-boot:run 类路径乱码
-- 启动 Java 服务：`cd server; mvn spring-boot:run`（或 java -jar target/smart-home-server-1.0.0.jar）；覆盖 AI 地址：--ai.service.url=...
+- 启动 Java 服务：`cd server; mvn spring-boot:run`（或 java -jar target/smart-home-server-1.0.0.jar，**工作目录须在 server/**，uploads 相对路径才正确）；覆盖 AI 地址：--ai.service.url=...
+- **MySQL 8.0.46**：服务名 MySQL80、端口 3306、root 密码 123456；库 smarthome、表 detect_record，初始化脚本 server/src/main/resources/db/schema.sql；密码只写在 application-local.yml（gitignore）。旧库 testweb 勿动。
 - 注意：系统里另有 Python 3.14/3.13 与 conda base 3.8，本项目一律不用，避免 torch 兼容问题。
 
 ## 7. 当前进度与下一步
@@ -118,7 +130,7 @@ Smart Home/
 - [x] 阶段1：FastAPI 推理服务（app/main.py + app/detector.py）。已装 fastapi0.141/uvicorn0.53；验收：/health 通过，bus.jpg 返回 1 bus + 4 person（conf 0.62~0.94），字段完整
 - [ ] 阶段1.5：修正数据集划分（当前 val 是 train 的复制，按帧段重新划分）→ 重跑训练得 best.pt 与新评估图 → 用 model_name=best.pt 验证 naruto_t1.png
 - [x] 阶段2：SpringBoot 3.3.5（收图、RestClient 转发 ai-platform、统一响应、全局异常、CORS、健康探活）。验收：mvn package 通过；双服务启动后经 8080 上传 bus.jpg 返回 1 bus+4 person，与直连 8000 一致。**踩坑**：RestClient 默认 JDK HttpClient 发 h2c 升级，uvicorn 不支持导致 POST 文件失败（GET 正常），显式换 SimpleClientHttpRequestFactory(HTTP/1.1) 解决；**坑2（环境）**：`mvn spring-boot:run` 报 NoClassDefFoundError: SpringApplication（编译/package/java -jar 均正常），根因是用户名路径含中文"王"，run 插件子进程类路径编码错乱；用 dependency:build-classpath 导出验证（UTF-8 读取后手动 java -cp 可启动），最终把本地仓库迁到 `D:/m2/repository` 英文路径根治；MAVEN_OPTS=-Dfile.encoding=UTF-8 无效
-- [ ] 阶段3：MySQL + MyBatis-Plus 检测记录落库
+- [x] 阶段3：MySQL 8 + MyBatis-Plus 3.5.9 检测记录落库。依赖 mybatis-plus-spring-boot3-starter + mybatis-plus-jsqlparser(3.5.9 起分页插件拆包) + mysql-connector-j + springdoc；功能：图片按 年月/UUID 存 uploads/、检测完落库（含推理耗时）、历史分页、详情、静态资源映射、Swagger。验收：两次检测落 2 条（首次 3304ms 含模型加载/二次 159ms 体现单例缓存），分页 total=2 列表无 resultJson，详情 resultJson 540 字符，图片 200(137KB)，swagger 200。**踩坑**：①3.5.9 需单独引 jsqlparser 否则找不到 PaginationInnerInterceptor；②@TableField(select=false) 连 selectById 也排除该列，详情改手写 @Select；③java -jar 占用 target jar 导致 repackage 无法 rename，须先停服务
 - [ ] 阶段4：Vue3 前端（上传、Canvas 画框、历史记录）
 - [ ] 阶段5：三端联调、截图、简历定稿
 
@@ -126,8 +138,9 @@ Smart Home/
 
 - 每完成一个可运行里程碑提交一次；提交前 `git status` / `git diff` 审查 AI 改动
 - message 风格：`feat: 新增YOLO推理FastAPI服务` / `fix: ` / `docs: ` / `chore: `
-- .gitignore 已忽略 __pycache__、*.cache、runs/、target/、node_modules/、.idea/、*.mp4
+- .gitignore 已忽略 __pycache__、*.cache、runs/、target/、node_modules/、.idea/、*.mp4、application-local.yml（含密码）、server/uploads/（用户图片）
 - 权重与数据集提交，保证 clone 可运行
+- 密钥/密码不入库：application-local.yml 模式（application.yml 提交非敏感配置，local 覆盖密码）
 
 ## 9. 简历素材（华清远见段，随项目推进更新）
 
