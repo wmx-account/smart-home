@@ -1,0 +1,9 @@
+# AI 推理服务依赖
+# 注意：torch / torchvision 因 CPU 与 GPU(CUDA) 版本不同，不在此固定，
+#       hbkjyolo 环境已安装 torch 2.13.0 + torchvision 0.28.0；
+#       全新环境请先按 ultralytics 官方指引安装 torch，再安装本文件。
+ultralytics==8.3.86
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.9
+pillow>=10.0
