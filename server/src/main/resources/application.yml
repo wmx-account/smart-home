@@ -4,12 +4,37 @@ server:
 spring:
   application:
     name: smart-home-server
+  profiles:
+    active: local          # 数据库密码在 application-local.yml（已 gitignore，不提交）
   servlet:
     multipart:
-      max-file-size: 10MB        # 单张图片上限
+      max-file-size: 10MB   # 单张图片上限
       max-request-size: 20MB
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/smarthome?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    # password 见 application-local.yml
+
+# MyBatis-Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true   # 下划线列名自动映射驼峰字段
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl   # 开发期控制台打印 SQL
+  global-config:
+    db-config:
+      id-type: auto
+
+# 在线接口文档（springdoc），访问 /swagger-ui.html 或 /docs.html
+springdoc:
+  swagger-ui:
+    path: /docs.html
 
 # Python AI 推理服务地址（换部署环境只改这里）
 ai:
   service:
     url: http://127.0.0.1:8000
+
+# 本项目自定义配置
+app:
+  upload-dir: ./uploads   # 检测图片本地存储目录（已 gitignore）

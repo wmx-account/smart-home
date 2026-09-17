@@ -2,11 +2,13 @@ package com.smarthome.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * 跨域配置：阶段 4 Vue 前端（5173 端口）通过浏览器直接访问本服务（8080），
- * 端口不同属于跨域，需要放开；联调期先允许全部来源，上线再收敛为具体域名。
+ * Web 配置：
+ * 1. CORS 跨域，供阶段 4 Vue 前端（5173）浏览器访问（8080）；
+ * 2. 把本地上传目录 uploads/ 映射为可访问的静态资源 /uploads/**。
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -18,5 +20,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:./uploads/");
     }
 }
