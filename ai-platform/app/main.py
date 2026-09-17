@@ -7,8 +7,8 @@
 
 import io
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile     #FastAPI框架核心类，用于创建 Web 应用
+from fastapi.middleware.cors import CORSMiddleware          #跨域中间件，解决前后端分离时浏览器的跨域请求限制
 from PIL import Image
 
 from app.detector import detect

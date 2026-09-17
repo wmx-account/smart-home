@@ -1,7 +1,7 @@
 # 项目交接手册（PROJECT_CONTEXT）
 
 > 本文件是项目的唯一权威上下文。任何新对话 / 新 Agent / 新设备接手时，**先读本文件和 README，再看 `git log`**，然后按"当前进度与下一步"继续。每完成一个阶段必须更新本文件并提交。
-> 最近更新：2026-09-17，阶段 1 已完成并验收通过
+> 最近更新：2026-09-17，阶段 2 已完成并真机联调通过（Java 8080 → Python 8000 链路）
 
 ---
 
@@ -59,6 +59,11 @@
 - 字段沿用原 Qt 工程 JSON 设计（cls_idx/cls_name/conf/lx/ly/rx/ry），传输层由私有 TCP 换为 HTTP；修正了原代码只回第一个目标的 bug（原 returnResultTcp 中 break）。
 - 另有 `GET /health` 健康检查；在线文档 `/docs`。
 
+### Java 业务层接口（前端只对接这里，端口 8080）
+- `POST /api/detect`（multipart）：字段 `file`、`modelName`（默认 yolo11n.pt）、`conf`（默认 0.25）；内部由 RestClient 转发到 AI 服务 `/detect`（对外驼峰、对内转下划线 model_name），响应体结构与 AI 服务一致。
+- `GET /api/health`：返回自身状态并探活下游 ai-platform。
+- 统一响应 `{code,msg,data}`；全局异常：空文件/非图片 400、AI 服务连不通 503、文件超限 400。
+
 ## 5. 目录结构
 
 ```
@@ -80,7 +85,17 @@ Smart Home/
 │   │   ├── bvn.yaml             # 数据集配置
 │   │   └── dataset/{images,labels}/{train,val}/
 │   └── requirements.txt
-├── server/                      # SpringBoot（阶段2，空）
+├── server/                      # SpringBoot 3.3.5 + Java 17（阶段2已完成）
+│   ├── pom.xml
+│   └── src/main/
+│       ├── java/com/smarthome/
+│       │   ├── SmartHomeApplication.java        # 启动类
+│       │   ├── common/   ApiResponse / BusinessException / GlobalExceptionHandler
+│       │   ├── config/   AiServiceProperties / RestClientConfig / WebConfig(CORS)
+│       │   ├── client/   AiDetectClient（RestClient 转发 multipart）
+│       │   ├── service/  DetectService（校验+编排）
+│       │   └── controller/ DetectController（/api/detect、/api/health）
+│       └── resources/application.yml（端口8080、multipart 10MB、ai.service.url）
 └── web/                         # Vue3（阶段4，空）
 ```
 
@@ -91,7 +106,9 @@ Smart Home/
   - 解释器路径：`D:\yolo_project\Miniconda_install\envs\hbkjyolo\python.exe`
   - 已装：torch 2.13.0、torchvision 0.28.0、ultralytics 8.3.86（可编辑安装指向 D:\yolo_project\ultralytics-8.3.86，**勿删除该目录**）、opencv 4.10、numpy 2.1.1、pillow 12.3
   - 阶段1补装：fastapi、uvicorn、python-multipart
-- **未安装**：JDK、Maven（阶段2前安装，JDK 17 + Maven，或用 IDEA 自带 Maven）
+- JDK 17：复用 IDEA 自带 JBR 17.0.9（含 javac），已设用户级 JAVA_HOME=`D:\web应用程序设计与开发课程\IntelliJ IDEA 2023.3.2\jbr`（后续可换独立 Temurin 17）
+- Maven 3.9.9：`D:\apache-maven-3.9.9-bin\apache-maven-3.9.9`，已设 MAVEN_HOME/PATH；用户级 `C:\Users\王\.m2\settings.xml` 已配阿里云镜像（mirrorOf=*，含 JDK-1.8 默认 profile，pom 已显式锁 17 不受影响）
+- 启动 Java 服务：`cd server; mvn spring-boot:run`（或 java -jar target/smart-home-server-1.0.0.jar）；覆盖 AI 地址：--ai.service.url=...
 - 注意：系统里另有 Python 3.14/3.13 与 conda base 3.8，本项目一律不用，避免 torch 兼容问题。
 
 ## 7. 当前进度与下一步
@@ -99,7 +116,7 @@ Smart Home/
 - [x] 阶段0：源码梳理、资产复制、仓库初始化
 - [x] 阶段1：FastAPI 推理服务（app/main.py + app/detector.py）。已装 fastapi0.141/uvicorn0.53；验收：/health 通过，bus.jpg 返回 1 bus + 4 person（conf 0.62~0.94），字段完整
 - [ ] 阶段1.5：修正数据集划分（当前 val 是 train 的复制，按帧段重新划分）→ 重跑训练得 best.pt 与新评估图 → 用 model_name=best.pt 验证 naruto_t1.png
-- [ ] 阶段2：SpringBoot（收图、转发 ai-platform、统一响应、CORS）
+- [x] 阶段2：SpringBoot 3.3.5（收图、RestClient 转发 ai-platform、统一响应、全局异常、CORS、健康探活）。验收：mvn package 通过；双服务启动后经 8080 上传 bus.jpg 返回 1 bus+4 person，与直连 8000 一致。**踩坑**：RestClient 默认 JDK HttpClient 发 h2c 升级，uvicorn 不支持导致 POST 文件失败（GET 正常），显式换 SimpleClientHttpRequestFactory(HTTP/1.1) 解决
 - [ ] 阶段3：MySQL + MyBatis-Plus 检测记录落库
 - [ ] 阶段4：Vue3 前端（上传、Canvas 画框、历史记录）
 - [ ] 阶段5：三端联调、截图、简历定稿
@@ -125,6 +142,8 @@ Smart Home/
 3. 为什么 Java/Python 分服务：AI 生态在 Python，业务生态在 Java，HTTP 解耦、各自独立部署
 4. Vibe Coding 中本人的角色：架构与契约设计、任务拆解、生成代码审查、验收与排错（能现场讲任意模块数据流）
 5. 原 socket 协议：4 字节小端文件长度头 + 图片二进制流；为什么换 HTTP：浏览器无法直接对接私有 TCP、HTTP 多端可用、生态成熟
+6. RestClient 转发文件踩坑：默认 JDK HttpClient 会发起 HTTP/2 明文升级(h2c)，uvicorn 仅支持 HTTP/1.1，带 body 的 POST 失败；通过回显服务抓包定位（uvicorn 日志 "Unsupported upgrade request"），改用 SimpleClientHttpRequestFactory 解决——体现排错方法论：分层抓包、最小复现
+7. 为什么不用微服务：仅两个服务的个人项目，Spring Cloud（注册中心/网关/配置中心）是过度设计；采用模块化单体（Controller-Service-Client 分层）+ 外部异构 AI 服务 HTTP 集成
 
 ## 11. 新对话交接话术
 

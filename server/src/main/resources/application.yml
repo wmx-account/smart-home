@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: smart-home-server
+  servlet:
+    multipart:
+      max-file-size: 10MB        # 单张图片上限
+      max-request-size: 20MB
+
+# Python AI 推理服务地址（换部署环境只改这里）
+ai:
+  service:
+    url: http://127.0.0.1:8000
