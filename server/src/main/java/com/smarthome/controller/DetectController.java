@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,8 +40,12 @@ public class DetectController {
         this.aiDetectClient = aiDetectClient;
     }
 
-    /** 图片目标检测：转发 AI、保存图片、记录入库 */
-    @PostMapping("/detect")
+    /**
+     * 图片目标检测：转发 AI、保存图片、记录入库。
+     * consumes 声明 multipart/form-data，Swagger 才会渲染文件选择按钮，
+     * 否则会被错误识别成 application/json 请求体。
+     */
+    @PostMapping(value = "/detect", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<DetectResultVO> detect(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "modelName", defaultValue = "yolo11n.pt") String modelName,
