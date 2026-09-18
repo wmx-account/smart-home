@@ -1,7 +1,7 @@
 # 项目交接手册（PROJECT_CONTEXT）
 
 > 本文件是项目的唯一权威上下文。任何新对话 / 新 Agent / 新设备接手时，**先读本文件和 README，再看 `git log`**，然后按"当前进度与下一步"继续。每完成一个阶段必须更新本文件并提交。
-> 最近更新：2026-09-18，阶段 4 已完成并三端联调通过（Vue3 前端：上传检测、坐标画框、历史分页/详情）
+> 最近更新：2026-09-18，阶段 1-5 全部完成：三端联调通过、前端美化、联调截图归档到 docs/screenshots、根 README 完善、简历项目段定稿（docs/简历-项目描述.md）。best.pt 重训与 Redis 限流为「可选未做项」。
 
 ---
 
@@ -70,8 +70,9 @@
 
 ### 前端（web/，Vite dev server 端口 5173）
 - 开发态浏览器只访问 5173；`vite.config.js` 把 `/api`、`/uploads` 代理到 8080（解决跨域、避免硬编码后端地址）；后端 CORS 同时保留。
-- 页面：`App.vue` 两个 Tab（目标检测 / 检测历史）；`components/DetectPanel.vue`（el-upload + 置信度阈值 + 结果）、`ResultImage.vue`（画框核心）、`RecordTable.vue`（el-table 分页 + 详情弹窗）。
-- `api/request.js`：axios 实例 + 响应拦截器（解包 `{code,msg,data}`、统一 ElMessage 报错）；`api/detect.js`：detectImage(FormData)/getRecords/getRecordDetail。
+- 页面：`App.vue` 渐变标题栏（含两个后端服务在线状态徽章，getHealth 每 15s 轮询）+ 两个 Tab（目标检测 / 检测历史）+ 页脚；`components/DetectPanel.vue`（左右分栏：el-upload 拖拽上传 + el-slider 置信度阈值；结果卡含「关闭图片」按钮回到空状态、el-descriptions 元信息、可点击高亮的目标明细列表）、`ResultImage.vue`（画框核心，支持 activeIndex 高亮/淡化）、`RecordTable.vue`（三个 el-statistic 统计卡 + 刷新按钮 + el-table 分页 + 详情弹窗）。
+- `api/request.js`：axios 实例 + 响应拦截器（解包 `{code,msg,data}`、统一 ElMessage 报错）；`api/detect.js`：detectImage(FormData)/getRecords/getRecordDetail/getHealth。
+- 图标用 `@element-plus/icons-vue`（main.js 全量注册）；`npm run build` 通过（1641 模块），有主包 >500KB 警告，源于 Element Plus 全量引入，生产可按需引入/代码分割（gzip 后约 377KB）。
 - 画框：相对定位容器 + 绝对定位 div，`left/top/width/height = 坐标/原图宽高 × 100%`，按 cls_idx 取色；非 Canvas（需求仅展示，div 更简单、响应式好）。
 
 ## 5. 目录结构
@@ -82,6 +83,8 @@ Smart Home/
 ├── README.md                    # 三端启动说明（阶段推进中补全）
 ├── docs/
 │   ├── PROJECT_CONTEXT.md       # 本文件
+│   ├── 简历-项目描述.md          # 简历项目段定稿（推荐版/精简版/面试预案）
+│   ├── screenshots/             # 三端联调截图（01空状态/02结果/03历史/04详情画框）
 │   └── train-result/            # 原实训训练评估图、results.csv（佐证材料）
 ├── ai-platform/                 # Python FastAPI 推理服务
 │   ├── app/
@@ -113,20 +116,20 @@ Smart Home/
 │           ├── application.yml        # 端口/数据源(无密码)/MP/springdoc/上传目录（提交）
 │           ├── application-local.yml  # 数据库密码（gitignore，不提交）
 │           └── db/schema.sql          # 建库建表脚本（提交）
-├── web/                         # Vue3 + Vite8 + Element Plus（阶段4已完成）
-│   ├── package.json             # vue3.5 / element-plus2.14 / axios1.20（node_modules 不提交）
+├── web/                         # Vue3 + Vite8 + Element Plus（阶段4完成、阶段5美化）
+│   ├── package.json             # vue3.5 / element-plus2.14 / icons-vue2.3 / axios1.20（node_modules、dist 不提交）
 │   ├── vite.config.js           # dev 端口5173 + /api、/uploads 代理到8080
 │   ├── index.html
 │   └── src/
-│       ├── main.js              # 注册 Element Plus（中文语言包）
-│       ├── App.vue              # 两 Tab：目标检测 / 检测历史
+│       ├── main.js              # 全量注册 Element Plus（中文语言包）与图标
+│       ├── App.vue              # 渐变标题栏 + 服务状态轮询 + 两 Tab + 页脚
 │       ├── style.css
 │       ├── api/request.js       # axios 实例 + 响应拦截器
-│       ├── api/detect.js        # 三个接口封装（FormData 上传）
+│       ├── api/detect.js        # 四个接口封装（FormData 上传/分页/详情/健康）
 │       └── components/
-│           ├── DetectPanel.vue  # 上传 + 阈值 + 结果展示
-│           ├── ResultImage.vue  # 坐标归一化画框（核心）
-│           └── RecordTable.vue  # 历史表格 + 分页 + 详情弹窗
+│           ├── DetectPanel.vue  # 拖拽上传 + 阈值滑块 + 结果 + 关闭图片 + 目标明细高亮
+│           ├── ResultImage.vue  # 坐标归一化画框（核心，支持高亮/淡化）
+│           └── RecordTable.vue  # 统计卡片 + 刷新 + 历史表格 + 分页 + 详情弹窗
 ```
 
 ## 6. 本机环境（已核实 2026-09-17）
@@ -152,7 +155,8 @@ Smart Home/
 - [x] 阶段2：SpringBoot 3.3.5（收图、RestClient 转发 ai-platform、统一响应、全局异常、CORS、健康探活）。验收：mvn package 通过；双服务启动后经 8080 上传 bus.jpg 返回 1 bus+4 person，与直连 8000 一致。**踩坑**：RestClient 默认 JDK HttpClient 发 h2c 升级，uvicorn 不支持导致 POST 文件失败（GET 正常），显式换 SimpleClientHttpRequestFactory(HTTP/1.1) 解决；**坑2（环境）**：`mvn spring-boot:run` 报 NoClassDefFoundError: SpringApplication（编译/package/java -jar 均正常），根因是用户名路径含中文"王"，run 插件子进程类路径编码错乱；用 dependency:build-classpath 导出验证（UTF-8 读取后手动 java -cp 可启动），最终把本地仓库迁到 `D:/m2/repository` 英文路径根治；MAVEN_OPTS=-Dfile.encoding=UTF-8 无效
 - [x] 阶段3：MySQL 8 + MyBatis-Plus 3.5.9 检测记录落库。依赖 mybatis-plus-spring-boot3-starter + mybatis-plus-jsqlparser(3.5.9 起分页插件拆包) + mysql-connector-j + springdoc；功能：图片按 年月/UUID 存 uploads/、检测完落库（含推理耗时）、历史分页、详情、静态资源映射、Swagger。验收：两次检测落 2 条（首次 3304ms 含模型加载/二次 159ms 体现单例缓存），分页 total=2 列表无 resultJson，详情 resultJson 540 字符，图片 200(137KB)，swagger 200。**踩坑**：①3.5.9 需单独引 jsqlparser 否则找不到 PaginationInnerInterceptor；②@TableField(select=false) 连 selectById 也排除该列，详情改手写 @Select；③java -jar 占用 target jar 导致 repackage 无法 rename，须先停服务
 - [x] 阶段4：Vue3 + Vite8 + Element Plus 前端。功能：el-upload 上传（FormData，可调置信度）、结果图按坐标叠加 div 画框（百分比归一化、按类别配色、标签 cls+conf）、历史 el-table 分页 + 缩略图 + 详情弹窗复现画框、axios 拦截器统一解包/报错、Vite proxy 代理 /api 与 /uploads。验收：三端启动后经 5173 上传 bus.jpg 返回 recordId/5 目标，分页 total 正确，图片经代理 200（137KB），health 链路通
-- [ ] 阶段5：三端联调截图、根 README 完善、（可选）best.pt 重训、（可选）Redis 限流、简历定稿
+- [x] 阶段5（前端美化 + 收尾）：装 @element-plus/icons-vue；重写 UI（渐变标题栏、服务在线状态 15s 轮询、拖拽上传、置信度滑块、「关闭图片」回空状态、目标明细点击高亮、历史页统计卡与刷新）；`npm run build` 通过；浏览器自动化完成三端联调并归档 4 张截图到 docs/screenshots（空状态/结果/历史/详情画框）；重写根 README（架构图/预览/目录/三端启动/接口表/技术点）；简历项目段定稿 docs/简历-项目描述.md（推荐版/精简版/一句话版 + 10 条面试预案 + JD 关键词自查）。提交 7c48ca9 及本收尾提交
+- 可选未做（用户未要求，勿擅自做）：阶段1.5 best.pt 重训（用户暂缓）、Redis 限流（未装 Redis，面试按「当前规模用不上，可做结果缓存/限流」答）、Element Plus 按需引入（仅作打包优化谈资）、Docker/微服务（明确不做）
 
 ## 8. Git 规范
 
