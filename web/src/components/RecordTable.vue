@@ -9,6 +9,10 @@ const pageNum = ref(1)
 const pageSize = ref(8)
 const loading = ref(false)
 
+// 本页统计
+const pageObjects = ref(0)
+const avgCost = ref(0)
+
 const dialogVisible = ref(false)
 const detail = ref(null)
 const detailObjects = ref([])
@@ -20,6 +24,9 @@ async function load(page = 1) {
     const data = await getRecords(page, pageSize.value)
     list.value = data.list
     total.value = data.total
+    pageObjects.value = data.list.reduce((s, r) => s + (r.objectCount || 0), 0)
+    const costs = data.list.map((r) => r.costMs || 0)
+    avgCost.value = costs.length ? Math.round(costs.reduce((a, b) => a + b, 0) / costs.length) : 0
   } finally {
     loading.value = false
   }
@@ -49,59 +56,78 @@ onMounted(() => load(1))
 </script>
 
 <template>
-  <el-table :data="list" v-loading="loading" border stripe size="small">
-    <el-table-column prop="id" label="ID" width="64" />
-    <el-table-column label="缩略图" width="110">
-      <template #default="{ row }">
-        <el-image
-          :src="row.imagePath"
-          :preview-src-list="[row.imagePath]"
-          fit="cover"
-          style="width: 80px; height: 54px; border-radius: 4px"
-        />
-      </template>
-    </el-table-column>
-    <el-table-column prop="modelName" label="模型" width="120" />
-    <el-table-column prop="confThreshold" label="阈值" width="76" />
-    <el-table-column prop="objectCount" label="目标数" width="76" />
-    <el-table-column label="尺寸" width="100">
-      <template #default="{ row }">{{ row.imageWidth }}×{{ row.imageHeight }}</template>
-    </el-table-column>
-    <el-table-column label="耗时" width="92">
-      <template #default="{ row }">{{ row.costMs }} ms</template>
-    </el-table-column>
-    <el-table-column label="检测时间" width="170">
-      <template #default="{ row }">{{ fmtTime(row.createTime) }}</template>
-    </el-table-column>
-    <el-table-column label="操作" width="90">
-      <template #default="{ row }">
-        <el-button link type="primary" @click="view(row)">查看框</el-button>
-      </template>
-    </el-table-column>
-  </el-table>
-
-  <el-pagination
-    class="pager"
-    background
-    layout="prev, pager, next, total"
-    :total="total"
-    :page-size="pageSize"
-    :current-page="pageNum"
-    @current-change="load"
-  />
-
-  <el-dialog v-model="dialogVisible" title="检测详情" width="720px">
-    <div v-if="detail" class="dialog-body">
-      <ResultImage
-        :image-url="detail.imagePath"
-        :objects="detailObjects"
-        :width="detail.imageWidth"
-        :height="detail.imageHeight"
-      />
-      <p class="tip-text">
-        记录 #{{ detail.id }} · {{ detail.modelName }} · 阈值 {{ detail.confThreshold }}
-        · {{ detail.objectCount }} 个目标 · 耗时 {{ detail.costMs }}ms
-      </p>
+  <div class="record-page">
+    <div class="stat-row">
+      <el-card shadow="hover" class="stat-card">
+        <el-statistic title="累计检测次数" :value="total" />
+      </el-card>
+      <el-card shadow="hover" class="stat-card">
+        <el-statistic title="本页目标总数" :value="pageObjects" />
+      </el-card>
+      <el-card shadow="hover" class="stat-card">
+        <el-statistic title="本页平均耗时(ms)" :value="avgCost" />
+      </el-card>
+      <el-button type="primary" plain :loading="loading" class="refresh-btn" @click="load(pageNum)">
+        <el-icon><Refresh /></el-icon>&nbsp;刷新
+      </el-button>
     </div>
-  </el-dialog>
+
+    <el-table :data="list" v-loading="loading" border stripe size="small">
+      <el-table-column prop="id" label="ID" width="64" />
+      <el-table-column label="缩略图" width="110">
+        <template #default="{ row }">
+          <el-image
+            :src="row.imagePath"
+            :preview-src-list="[row.imagePath]"
+            fit="cover"
+            style="width: 80px; height: 54px; border-radius: 4px"
+          />
+        </template>
+      </el-table-column>
+      <el-table-column prop="modelName" label="模型" width="120" />
+      <el-table-column prop="confThreshold" label="阈值" width="76" />
+      <el-table-column prop="objectCount" label="目标数" width="76" />
+      <el-table-column label="尺寸" width="100">
+        <template #default="{ row }">{{ row.imageWidth }}×{{ row.imageHeight }}</template>
+      </el-table-column>
+      <el-table-column label="耗时" width="92">
+        <template #default="{ row }">{{ row.costMs }} ms</template>
+      </el-table-column>
+      <el-table-column label="检测时间" width="170">
+        <template #default="{ row }">{{ fmtTime(row.createTime) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="100">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="view(row)">
+            <el-icon><View /></el-icon>&nbsp;查看框
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      class="pager"
+      background
+      layout="prev, pager, next, total"
+      :total="total"
+      :page-size="pageSize"
+      :current-page="pageNum"
+      @current-change="load"
+    />
+
+    <el-dialog v-model="dialogVisible" title="检测详情" width="720px">
+      <div v-if="detail" class="dialog-body">
+        <ResultImage
+          :image-url="detail.imagePath"
+          :objects="detailObjects"
+          :width="detail.imageWidth"
+          :height="detail.imageHeight"
+        />
+        <p class="tip-text">
+          记录 #{{ detail.id }} · {{ detail.modelName }} · 阈值 {{ detail.confThreshold }}
+          · {{ detail.objectCount }} 个目标 · 耗时 {{ detail.costMs }}ms
+        </p>
+      </div>
+    </el-dialog>
+  </div>
 </template>

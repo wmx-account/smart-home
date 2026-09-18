@@ -12,6 +12,7 @@ const props = defineProps({
   objects: { type: Array, default: () => [] },
   width: { type: Number, default: 1 },   // 原图宽（像素）
   height: { type: Number, default: 1 },  // 原图高（像素）
+  activeIndex: { type: Number, default: -1 }, // 高亮的目标下标，-1 表示不高亮
 })
 
 function colorOf(obj) {
@@ -30,13 +31,25 @@ function boxStyle(obj) {
     borderColor: colorOf(obj),
   }
 }
+
+// 高亮：选中的框加强，其余框变淡
+function boxClass(i) {
+  if (props.activeIndex < 0) return ''
+  return props.activeIndex === i ? 'hit' : 'dim'
+}
 </script>
 
 <template>
   <div class="result-image">
     <img :src="imageUrl" alt="检测结果" />
     <div class="layer">
-      <div v-for="(obj, i) in objects" :key="i" class="box" :style="boxStyle(obj)">
+      <div
+        v-for="(obj, i) in objects"
+        :key="i"
+        class="box"
+        :class="boxClass(i)"
+        :style="boxStyle(obj)"
+      >
         <span class="tag" :style="{ backgroundColor: colorOf(obj) }">
           {{ obj.cls_name }} {{ (obj.conf * 100).toFixed(0) }}%
         </span>
@@ -56,7 +69,7 @@ function boxStyle(obj) {
   display: block;
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 .layer {
   position: absolute;
@@ -66,6 +79,15 @@ function boxStyle(obj) {
   position: absolute;
   border: 2px solid;
   box-sizing: border-box;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.box.dim {
+  opacity: 0.25;
+}
+.box.hit {
+  border-width: 3px;
+  z-index: 2;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
 }
 .tag {
   position: absolute;

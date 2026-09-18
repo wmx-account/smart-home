@@ -22,3 +22,8 @@ export function getRecords(pageNum = 1, pageSize = 8) {
 export function getRecordDetail(id) {
   return request.get(`/api/records/${id}`)
 }
+
+// 服务健康状态（业务服务 + 下游 AI 服务探活）
+export function getHealth() {
+  return request.get('/api/health')
+}
