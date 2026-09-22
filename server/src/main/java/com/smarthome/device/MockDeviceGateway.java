@@ -69,19 +69,19 @@ public class MockDeviceGateway implements DeviceGateway {
     private State evolve(State s) {
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
-        // 温度：向当前档位目标值指数逼近 + 小幅随机噪声
+        // 温度：向当前档位目标值缓慢指数逼近（每 2s 逼近 5%，约分钟级趋稳，贴近真实降温节奏）+ 小幅噪声
         double targetTemp = s.fanPower ? (s.fanSpeed == 2 ? FULL_TEMP : HALF_TEMP) : ENV_TEMP;
-        s.temperature = round1(s.temperature + (targetTemp - s.temperature) * 0.18
-                + (random.nextDouble() - 0.5) * 0.16);
+        s.temperature = round1(s.temperature + (targetTemp - s.temperature) * 0.05
+                + (random.nextDouble() - 0.5) * 0.10);
 
-        // 湿度：随温度反向小幅变化（降温略增湿），钳制 30~90%
+        // 湿度：随温度反向缓慢变化（降温略增湿），钳制 30~90%
         double targetHumidity = 55.0 + (ENV_TEMP - s.temperature) * 1.5;
-        double rawHumidity = s.humidity + (targetHumidity - s.humidity) * 0.10
-                + (random.nextDouble() - 0.5) * 0.8;
+        double rawHumidity = s.humidity + (targetHumidity - s.humidity) * 0.04
+                + (random.nextDouble() - 0.5) * 0.6;
         s.humidity = clampDouble(rawHumidity, 30.0, 90.0);
 
-        // 光照：昼夜曲线 + 噪声，仅展示
-        double rawLight = lightNow() + (random.nextDouble() - 0.5) * 30;
+        // 光照：昼夜曲线 + 小幅噪声，仅展示
+        double rawLight = lightNow() + (random.nextDouble() - 0.5) * 16;
         s.light = clampLong(rawLight, 0.0, 1000.0);
         return s;
     }
