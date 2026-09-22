@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: smart-home-server
+  mvc:
+    async:
+      request-timeout: -1   # SSE 长连接不超时（默认 30s 会断开 EventSource）
   profiles:
     active: local          # 数据库密码在 application-local.yml（已 gitignore，不提交）
   servlet:
@@ -38,3 +41,12 @@ ai:
 # 本项目自定义配置
 app:
   upload-dir: ./uploads   # 检测图片本地存储目录（已 gitignore）
+
+# 设备线（阶段6a）：内置 Mock 设备模拟温湿度/光照/风扇，SSE 每 2s 推送
+device:
+  gateway:
+    type: mock            # mock=内置模拟设备；tcp=预留真实 STM32/Modbus 网关（暂未实现，切换不改业务/前端）
+  mock:
+    tick-ms: 2000         # Mock 物理模型推进周期（毫秒）
+  push:
+    interval-ms: 2000     # SSE 遥测推送周期（毫秒）

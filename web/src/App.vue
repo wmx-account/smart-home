@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import DetectPanel from './components/DetectPanel.vue'
+import DevicePanel from './components/DevicePanel.vue'
 import RecordTable from './components/RecordTable.vue'
 import { getHealth } from './api/detect'
 
@@ -41,7 +42,7 @@ onUnmounted(() => timer && clearInterval(timer))
         <el-icon class="brand-icon"><Cpu /></el-icon>
         <div class="brand-text">
           <h1>智能家居边缘智能系统</h1>
-          <p>YOLO 人物目标检测 · SpringBoot + FastAPI + Vue3</p>
+          <p>YOLO 目标检测 · 设备实时监控 · SpringBoot + FastAPI + Vue3</p>
         </div>
       </div>
       <div class="status">
@@ -63,6 +64,12 @@ onUnmounted(() => timer && clearInterval(timer))
             <span class="tab-label"><el-icon><Search /></el-icon>目标检测</span>
           </template>
           <DetectPanel @success="onDetectSuccess" />
+        </el-tab-pane>
+        <el-tab-pane name="device">
+          <template #label>
+            <span class="tab-label"><el-icon><Odometer /></el-icon>设备监控</span>
+          </template>
+          <DevicePanel />
         </el-tab-pane>
         <el-tab-pane name="records">
           <template #label>
