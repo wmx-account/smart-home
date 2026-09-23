@@ -13,8 +13,9 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 内置模拟设备网关：在没有 STM32 硬件时，用内存物理模型模拟一台客厅设备。
  * 每 2s 推进一次温湿度/光照，并响应风扇控制，形成「开风扇 → 温度按档位下降」的闭环：
- * 关机温度趋向环境 26℃，半速趋向 22℃，全速趋向 18℃；湿度随温度反向小幅变化；
- * 光照按昼夜变化（仅展示，不参与风扇联动）。
+ * 关机温度趋向环境 26℃，半速趋向 22℃，全速趋向 18℃；切换风扇后有 3s 热惯性延迟
+ * （前 3s 温湿度完全不变），之后以每 2s 逼近 3% 的速度缓慢变化；湿度随温度反向缓变；
+ * 光照只按当地时刻变化、不加噪声（不参与风扇联动，切换风扇时光照保持稳定）。
  *
  * 线程安全：{@link #tick()} 跑在调度线程池、{@link #controlFan} 跑在 Tomcat 请求线程，
  * 用 AtomicReference 持有状态，保证一写多读的可见性与安全。
@@ -41,6 +42,10 @@ public class MockDeviceGateway implements DeviceGateway {
         double light;
         boolean fanPower;
         int fanSpeed;
+        double targetTemp;      // 当前正在逼近的目标温度（℃）
+        double pendingTarget;   // 切换风扇后待生效的目标温度
+        long switchAt;          // 待生效目标的生效时刻（毫秒）
+        boolean hasPending;     // 是否存在尚未生效的目标（热惯性延迟中）
 
         State(double temperature, double humidity, double light, boolean fanPower, int fanSpeed) {
             this.temperature = temperature;
@@ -48,6 +53,8 @@ public class MockDeviceGateway implements DeviceGateway {
             this.light = light;
             this.fanPower = fanPower;
             this.fanSpeed = fanSpeed;
+            this.targetTemp = ENV_TEMP;
+            this.hasPending = false;
         }
     }
 
@@ -67,22 +74,32 @@ public class MockDeviceGateway implements DeviceGateway {
     }
 
     private State evolve(State s) {
+        long now = System.currentTimeMillis();
+
+        // 切换风扇后的热惯性延迟：前 3s 温湿度 / 光照完全保持不变
+        if (s.hasPending && now < s.switchAt) {
+            return s;
+        }
+        // 延迟结束，待生效目标转为当前目标
+        if (s.hasPending) {
+            s.targetTemp = s.pendingTarget;
+            s.hasPending = false;
+        }
+
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
-        // 温度：向当前档位目标值缓慢指数逼近（每 2s 逼近 5%，约分钟级趋稳，贴近真实降温节奏）+ 小幅噪声
-        double targetTemp = s.fanPower ? (s.fanSpeed == 2 ? FULL_TEMP : HALF_TEMP) : ENV_TEMP;
-        s.temperature = round1(s.temperature + (targetTemp - s.temperature) * 0.05
+        // 温度：向当前目标缓慢指数逼近（每 2s 逼近 3%，约分钟级趋稳）+ 小幅噪声
+        s.temperature = round1(s.temperature + (s.targetTemp - s.temperature) * 0.03
                 + (random.nextDouble() - 0.5) * 0.10);
 
         // 湿度：随温度反向缓慢变化（降温略增湿），钳制 30~90%
         double targetHumidity = 55.0 + (ENV_TEMP - s.temperature) * 1.5;
-        double rawHumidity = s.humidity + (targetHumidity - s.humidity) * 0.04
+        double rawHumidity = s.humidity + (targetHumidity - s.humidity) * 0.03
                 + (random.nextDouble() - 0.5) * 0.6;
         s.humidity = clampDouble(rawHumidity, 30.0, 90.0);
 
-        // 光照：昼夜曲线 + 小幅噪声，仅展示
-        double rawLight = lightNow() + (random.nextDouble() - 0.5) * 16;
-        s.light = clampLong(rawLight, 0.0, 1000.0);
+        // 光照：只按当地时刻，不加随机噪声，短时间内保持稳定（不随风扇变化）
+        s.light = clampLong(lightNow(), 0.0, 1000.0);
         return s;
     }
 
@@ -115,6 +132,15 @@ public class MockDeviceGateway implements DeviceGateway {
         state.updateAndGet(s -> {
             s.fanPower = power;
             s.fanSpeed = power ? speed : 0;   // 关机强制档位归零
+            // 计算新目标温度，挂起 3s 再生效（模拟热惯性：刚切换时温湿度不变）
+            double newTarget = power ? (speed == 2 ? FULL_TEMP : HALF_TEMP) : ENV_TEMP;
+            if (newTarget == s.targetTemp) {
+                s.hasPending = false;          // 回到当前已生效目标，取消挂起
+            } else {
+                s.pendingTarget = newTarget;
+                s.switchAt = System.currentTimeMillis() + 3000;
+                s.hasPending = true;
+            }
             return s;
         });
         return snapshot();

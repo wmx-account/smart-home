@@ -24,8 +24,8 @@ function gaugeOption(value, name, unit, min, max, color, decimals) {
         type: 'gauge',
         min,
         max,
-        radius: '82%',
-        center: ['50%', '48%'],
+        radius: '76%',
+        center: ['50%', '38%'],
         progress: { show: true, width: 12, itemStyle: { color } },
         axisLine: { lineStyle: { width: 12, color: [[1, '#e8edf3']] } },
         axisTick: { show: false },
@@ -37,10 +37,10 @@ function gaugeOption(value, name, unit, min, max, color, decimals) {
           valueAnimation: true,
           color: '#1f2d3d',
           fontSize: 20,
-          offsetCenter: [0, '66%'],
+          offsetCenter: [0, '124%'],
           formatter: (v) => `${decimals ? Number(v).toFixed(decimals) : Math.round(v)}${unit}`,
         },
-        title: { offsetCenter: [0, '112%'], color: '#606266', fontSize: 13 },
+        title: { offsetCenter: [0, '162%'], color: '#606266', fontSize: 13 },
         data: [{ value: value ?? 0, name }],
       },
     ],
@@ -251,7 +251,7 @@ onUnmounted(() => {
 }
 .chart {
   width: 100%;
-  height: 280px;
+  height: 300px;
 }
 .fan-row {
   display: flex;
