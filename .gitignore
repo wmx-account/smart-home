@@ -1,0 +1,46 @@
+# ===== 通用：系统 / IDE / 密钥 / 日志 =====
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
+*.log
+logs/
+.env
+.env.*
+application-local.yml
+application-dev.yml
+
+# ===== Python 端 ai-platform =====
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+runs/
+*.cache
+*.tmp
+
+# ===== Java 端 server（SpringBoot + Maven）=====
+target/
+HELP.md
+uploads/
+
+# ===== 前端 web（Vue + Vite + npm）=====
+node_modules/
+dist/
+dist-ssr/
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-error.log*
+
+# ===== 大体积素材 =====
+*.mp4
+
+# 说明：
+# 1. models/*.pt 权重（约 5-6MB）需提交，保证 clone 后可直接运行
+# 2. train/dataset 训练数据集（82 张图）需提交，保证训练可复现
+# 3. docs/train-result 训练评估图需提交，作为训练过程佐证
+
+# ===== 本地专用材料（仅本机使用，不提交）=====
+本地文件/
