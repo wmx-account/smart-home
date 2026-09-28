@@ -14,3 +14,13 @@ export function controlFan(power, speed) {
 
 // SSE 遥测流地址：交给浏览器原生 EventSource（不走 axios），由 Vite 代理到 8080
 export const DEVICE_STREAM_URL = '/api/device/stream'
+
+// 历史趋势：按 range（1h/1d/7d/30d）返回时间桶聚合点
+export function getSensorData(range) {
+  return request.get('/api/device/sensor', { params: { range } })
+}
+
+// 风扇操作历史分页
+export function getFanLogs(pageNum = 1, pageSize = 8) {
+  return request.get('/api/device/fan-logs', { params: { pageNum, pageSize } })
+}

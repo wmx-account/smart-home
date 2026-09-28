@@ -50,3 +50,6 @@ device:
     tick-ms: 2000         # Mock 物理模型推进周期（毫秒）
   push:
     interval-ms: 2000     # SSE 遥测推送周期（毫秒）
+  sensor:
+    save-interval-ms: 10000   # 遥测入库周期（每 10s 一条时序数据）
+    retention-days: 30        # 历史保留天数，超期由定时任务清理

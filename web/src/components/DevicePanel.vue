@@ -1,8 +1,14 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { getDeviceStatus, controlFan, DEVICE_STREAM_URL } from '../api/device'
+import {
+  getDeviceStatus,
+  controlFan,
+  getSensorData,
+  getFanLogs,
+  DEVICE_STREAM_URL,
+} from '../api/device'
 
 // ===== 连接与数据状态 =====
 const connState = ref('connecting') // connecting / online
@@ -58,6 +64,118 @@ function updateCharts(s) {
   charts[0].setOption(gaugeOption(s.temperature, '温度', '℃', 10, 40, '#f56c6c', 1))
   charts[1].setOption(gaugeOption(s.humidity, '湿度', '%', 0, 100, '#409eff', 1))
   charts[2].setOption(gaugeOption(s.light, '光照', 'lx', 0, 1000, '#e6a23c', 0))
+}
+
+// ===== 历史趋势折线图 =====
+const histRange = ref('1h')
+const histRef = ref(null)
+let histChart = null
+
+function num(v) {
+  return v == null ? null : Number(v)
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function formatChartTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+function lineOption(points) {
+  const times = points.map((p) => formatChartTime(p.bucketTime))
+  return {
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (v) => (v == null ? '-' : Number(v).toFixed(1)),
+    },
+    legend: { data: ['温度', '湿度', '光照'], top: 0 },
+    grid: { left: 56, right: 64, top: 40, bottom: 64 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: times,
+      axisLabel: { fontSize: 10 },
+    },
+    yAxis: [
+      { type: 'value', name: '℃/%', scale: true, axisLabel: { fontSize: 10 } },
+      {
+        type: 'value',
+        name: 'lux',
+        position: 'right',
+        min: 0,
+        max: 1000,
+        axisLabel: { fontSize: 10 },
+      },
+    ],
+    dataZoom: [
+      { type: 'inside' },
+      { type: 'slider', height: 16, bottom: 24 },
+    ],
+    series: [
+      {
+        name: '温度', type: 'line', smooth: true, showSymbol: false,
+        data: points.map((p) => num(p.temperature)), itemStyle: { color: '#f56c6c' },
+      },
+      {
+        name: '湿度', type: 'line', smooth: true, showSymbol: false,
+        data: points.map((p) => num(p.humidity)), itemStyle: { color: '#409eff' },
+      },
+      {
+        name: '光照', type: 'line', smooth: true, showSymbol: false, yAxisIndex: 1,
+        data: points.map((p) => num(p.light)), itemStyle: { color: '#e6a23c' },
+      },
+    ],
+  }
+}
+
+async function loadHistory() {
+  try {
+    const list = await getSensorData(histRange.value)
+    if (histChart) histChart.setOption(lineOption(list || []), true)
+  } catch (e) {
+    // 历史加载失败不影响实时监控
+  }
+}
+
+// ===== 风扇操作记录弹窗 =====
+const logDialog = ref(false)
+const fanLogs = ref([])
+const logTotal = ref(0)
+const logPage = ref(1)
+
+async function openFanLogs() {
+  logDialog.value = true
+  logPage.value = 1
+  await loadFanLogs()
+}
+
+async function loadFanLogs() {
+  try {
+    const d = await getFanLogs(logPage.value, 8)
+    fanLogs.value = d.records || []
+    logTotal.value = d.total || 0
+  } catch (e) {
+    // 忽略
+  }
+}
+
+function onLogPage(p) {
+  logPage.value = p
+  loadFanLogs()
+}
+
+function actionText(row) {
+  return row.power === 1 ? `开启 · ${row.speed === 2 ? '全速' : '半速'}` : '关闭'
+}
+
+function formatLogTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
 }
 
 // ===== 数据应用 / 控制 =====
@@ -131,23 +249,42 @@ function startSse() {
 
 function resizeCharts() {
   charts.forEach((c) => c.resize())
+  if (histChart) histChart.resize()
 }
 
-onMounted(() => {
+let resizeObserver = null
+
+onMounted(async () => {
+  await nextTick()
+  // 仪表盘
   makeChart(tempRef.value, gaugeOption(null, '温度', '℃', 10, 40, '#f56c6c', 1))
   makeChart(humRef.value, gaugeOption(null, '湿度', '%', 0, 100, '#409eff', 1))
   makeChart(lightRef.value, gaugeOption(null, '光照', 'lx', 0, 1000, '#e6a23c', 0))
+  // 历史趋势
+  histChart = echarts.init(histRef.value)
+  // 本面板在切到设备 Tab 时才首次渲染，init 瞬间容器宽度可能还没稳定；
+  // ResizeObserver 在布局稳定（尺寸变化）时自动 resize，同时兼顾后续窗口/布局变化
+  resizeObserver = new ResizeObserver(() => resizeCharts())
+  ;[tempRef.value, humRef.value, lightRef.value, histRef.value].forEach((el) =>
+    resizeObserver.observe(el),
+  )
   window.addEventListener('resize', resizeCharts)
   // 先拉一帧快照，再订阅 SSE 持续刷新
   getDeviceStatus().then(applySnap).catch(() => {})
   startSse()
+  loadHistory()
 })
 
 onUnmounted(() => {
   if (es) es.close()
+  if (resizeObserver) resizeObserver.disconnect()
   window.removeEventListener('resize', resizeCharts)
   charts.forEach((c) => c.dispose())
   charts = []
+  if (histChart) {
+    histChart.dispose()
+    histChart = null
+  }
 })
 </script>
 
@@ -181,10 +318,31 @@ onUnmounted(() => {
       </div>
     </el-card>
 
+    <!-- 历史趋势 -->
+    <el-card shadow="never" class="panel-card">
+      <template #header>
+        <div class="card-header-between">
+          <span class="card-title"><el-icon><TrendCharts /></el-icon> 历史趋势</span>
+          <el-radio-group v-model="histRange" size="small" @change="loadHistory">
+            <el-radio-button value="1h">近1小时</el-radio-button>
+            <el-radio-button value="1d">近1天</el-radio-button>
+            <el-radio-button value="7d">近7天</el-radio-button>
+            <el-radio-button value="30d">近30天</el-radio-button>
+          </el-radio-group>
+        </div>
+      </template>
+      <div ref="histRef" class="hist-chart"></div>
+    </el-card>
+
     <!-- 风扇控制（上行走 REST） -->
     <el-card shadow="never" class="panel-card">
       <template #header>
-        <span class="card-title"><el-icon><Wind /></el-icon> 风扇控制</span>
+        <div class="card-header-between">
+          <span class="card-title"><el-icon><Wind /></el-icon> 风扇控制</span>
+          <el-button size="small" text type="primary" @click="openFanLogs">
+            <el-icon><Document /></el-icon> 操作记录
+          </el-button>
+        </div>
       </template>
       <div class="fan-row">
         <span class="fan-label">电源</span>
@@ -214,6 +372,29 @@ onUnmounted(() => {
         （半速趋向约 22℃、全速约 18℃），关机回升到环境温约 26℃，形成联动闭环。
       </div>
     </el-card>
+
+    <!-- 风扇操作记录弹窗 -->
+    <el-dialog v-model="logDialog" title="风扇操作记录" width="560px">
+      <el-table :data="fanLogs" size="small" stripe>
+        <el-table-column label="时间" width="180">
+          <template #default="{ row }">{{ formatLogTime(row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column label="动作">
+          <template #default="{ row }">{{ actionText(row) }}</template>
+        </el-table-column>
+        <el-table-column prop="source" label="来源" width="90" />
+      </el-table>
+      <div class="pager">
+        <el-pagination
+          layout="prev, pager, next"
+          :total="logTotal"
+          :page-size="8"
+          :current-page="logPage"
+          small
+          @current-change="onLogPage"
+        />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -253,6 +434,10 @@ onUnmounted(() => {
   width: 100%;
   height: 300px;
 }
+.hist-chart {
+  width: 100%;
+  height: 320px;
+}
 .fan-row {
   display: flex;
   align-items: center;
@@ -271,5 +456,10 @@ onUnmounted(() => {
   color: #909399;
   margin-top: 10px;
   line-height: 1.7;
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 </style>

@@ -1,6 +1,8 @@
 package com.smarthome.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smarthome.common.BusinessException;
 import com.smarthome.device.DeviceGateway;
 import com.smarthome.dto.FanControlRequest;
@@ -78,5 +80,14 @@ public class DeviceService {
         fanControlLogMapper.insert(log);
 
         return snapshot;
+    }
+
+    /** 风扇操作历史分页（设备监控页「操作记录」弹窗用），按时间倒序 */
+    public IPage<FanControlLog> fanLogs(int pageNum, int pageSize) {
+        Page<FanControlLog> page = new Page<>(pageNum, pageSize);
+        return fanControlLogMapper.selectPage(page,
+                new QueryWrapper<FanControlLog>()
+                        .eq("device_id", deviceId)
+                        .orderByDesc("create_time"));
     }
 }

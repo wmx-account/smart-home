@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS fan_control_log (
     INDEX idx_device_time (device_id, create_time)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '风扇控制日志表';
 
+-- 传感器时序数据表：设备遥测每 10s 批量落一条，用于历史趋势（阶段6b）
+CREATE TABLE IF NOT EXISTS sensor_data (
+    id           BIGINT       PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    device_id    BIGINT       NOT NULL COMMENT '设备 ID，关联 device.id',
+    temperature  DECIMAL(5,2) COMMENT '温度(℃)',
+    humidity     DECIMAL(5,2) COMMENT '湿度(%)',
+    light        DECIMAL(6,1) COMMENT '光照(lux)',
+    create_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '采集时间',
+    INDEX idx_device_time (device_id, create_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '传感器时序数据表';
+
 -- 预置一台客厅模拟设备（device_code 唯一键 + INSERT IGNORE，保证脚本可重复执行）
 INSERT IGNORE INTO device (device_code, name, type, online)
 VALUES ('living-room-01', '客厅智能主机', 'gateway', 1);
