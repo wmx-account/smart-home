@@ -7,3 +7,12 @@ fastapi>=0.115
 uvicorn>=0.30
 python-multipart>=0.0.9
 pillow>=10.0
+
+# ===== LLM Agent 线（L0 起）=====
+# 注：langchain-community 已官方弃用(sunset)，统一使用独立集成包
+langchain>=1.4
+langgraph>=1.2
+langchain-openai>=1.6
+langchain-chroma>=1.1
+chromadb>=1.5
+sentence-transformers>=6.1
