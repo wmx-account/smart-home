@@ -3,17 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/genAntdCss.cjs",
     "dev": "next dev -p 3000",
+    "prebuild": "node scripts/genAntdCss.cjs",
     "build": "next build"
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
-    "@ant-design/nextjs-registry": "^1.0.2",
     "antd": "^5.22.2",
     "axios": "^1.7.9",
     "echarts": "^6.1.0",
     "next": "^14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "@ant-design/cssinjs": "1.24.0"
   }
 }

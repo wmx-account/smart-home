@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as echarts from 'echarts'
+// 统一从 lib/echarts 引入按需注册后的实例（而非全量 'echarts'），减小打包体积
+import echarts from '@/lib/echarts'
 
 // 通用 ECharts 封装：挂载时初始化、option 变化时更新；
 // 内置 ResizeObserver + 窗口 resize 自适应，卸载时 dispose，杜绝泄漏。

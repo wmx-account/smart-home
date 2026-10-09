@@ -6,6 +6,9 @@ node_modules
 out/
 next-env.d.ts
 
+# antd 静态样式（构建前由 scripts/genAntdCss.cjs 自动生成，勿提交）
+app/antd.min.css
+
 # production build
 dist/
 dist-ssr/
