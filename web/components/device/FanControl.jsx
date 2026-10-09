@@ -56,10 +56,12 @@ export default function FanControl({
           {fanPower ? `运行中 · ${speedName(fanSpeed)}` : '已关闭'}
         </Tag>
       </div>
+      {/* 暂时隐藏 REST 控制说明（保留文案，需要时取消这段注释即可）
       <div className="hint">
         控制指令走 REST（POST /api/device/fan）并写入 fan_control_log 审计；开风扇后温度按档位下降
         （半速趋向约 22℃、全速约 18℃），关机回升到环境温约 26℃，形成联动闭环。
       </div>
+      */}
 
       <FanLogModal open={logOpen} onClose={() => setLogOpen(false)} />
     </Card>

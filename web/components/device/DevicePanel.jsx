@@ -107,10 +107,12 @@ export default function DevicePanel() {
         }
       >
         <GaugeGrid snap={snap} />
+        {/* 暂时隐藏 SSE 说明（保留文案，需要时取消这段注释即可）
         <div className="hint">
           温湿度 / 光照由后端每 2s 通过 SSE（text/event-stream）主动推送；当前为内置 Mock 设备
           （device.gateway.type=mock），将来替换为真实 STM32 网关时前端无需改动。
         </div>
+        */}
       </Card>
 
       <HistoryChart />

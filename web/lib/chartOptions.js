@@ -9,7 +9,7 @@ export function gaugeOption(value, name, unit, min, max, color, decimals) {
         type: 'gauge',
         min,
         max,
-        radius: '76%',
+        radius: '68%', // 略收半径为底部标题留白，避免宽屏（图宽>300px）时标题被容器下沿裁切
         center: ['50%', '38%'],
         progress: { show: true, width: 12, itemStyle: { color } },
         axisLine: { lineStyle: { width: 12, color: [[1, '#e8edf3']] } },
