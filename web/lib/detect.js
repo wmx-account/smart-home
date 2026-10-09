@@ -1,5 +1,5 @@
 // 检测相关接口封装：组件只调用这里的函数，不直接写 URL
-import request from './request'
+import request from '@/lib/request'
 
 // 上传图片检测。multipart/form-data：用 FormData 装文件和普通字段，
 // 等价于 curl -F "file=@xx.jpg" -F "conf=0.25"

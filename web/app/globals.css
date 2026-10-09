@@ -9,9 +9,10 @@ body {
   color: #1f2d3d;
 }
 
-#app {
+.app-shell {
   max-width: 1180px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
 /* ===== 顶部标题栏 ===== */
@@ -23,7 +24,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  gap: 16px;
+  padding: 14px 24px;
   box-shadow: 0 4px 16px rgba(14, 107, 122, 0.25);
 }
 .brand {
@@ -32,10 +34,11 @@ body {
   gap: 14px;
 }
 .brand-icon {
-  font-size: 34px;
+  font-size: 30px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  padding: 8px;
+  padding: 8px 10px;
+  display: inline-flex;
 }
 .brand-text h1 {
   font-size: 20px;
@@ -50,6 +53,7 @@ body {
 .status {
   display: flex;
   gap: 10px;
+  flex-shrink: 0;
 }
 .status-item {
   display: flex;
@@ -59,6 +63,7 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   padding: 6px 12px;
+  white-space: nowrap;
 }
 .status-item .dot {
   width: 8px;
@@ -74,21 +79,36 @@ body {
   font-weight: 600;
 }
 
-/* ===== 主体 ===== */
+/* ===== 导航 ===== */
+.app-nav {
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(31, 45, 61, 0.06);
+  padding: 0 12px;
+}
+.nav-menu {
+  border-bottom: none !important;
+  background: transparent;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== 主体 / 页脚 ===== */
 .app-main {
   padding: 16px 0;
 }
-.main-tabs {
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px 20px 20px;
-  box-shadow: 0 2px 12px rgba(31, 45, 61, 0.06);
+.app-footer {
+  text-align: center;
+  color: #909399;
+  font-size: 12px;
+  line-height: 48px;
 }
-.tab-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
+
+/* ===== 通用卡片 ===== */
 .panel-card {
   border-radius: 10px;
 }
@@ -102,12 +122,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* ===== 上传与阈值 ===== */
-.uploader {
-  width: 100%;
-}
 .conf-row {
   margin-top: 20px;
 }
@@ -123,14 +142,51 @@ body {
   color: #909399;
 }
 
-/* ===== 检测结果 ===== */
+/* ===== 检测结果画框 ===== */
 .result-box {
   min-height: 320px;
 }
 .result-image {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
   border: 1px solid #ebeef5;
   border-radius: 6px;
+}
+.result-image img {
+  display: block;
   max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.ri-layer {
+  position: absolute;
+  inset: 0;
+}
+.ri-box {
+  position: absolute;
+  border: 2px solid;
+  box-sizing: border-box;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.ri-box.dim {
+  opacity: 0.25;
+}
+.ri-box.hit {
+  border-width: 3px;
+  z-index: 2;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+.ri-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #fff;
+  padding: 0 5px;
+  white-space: nowrap;
 }
 .result-meta {
   width: 100%;
@@ -179,26 +235,29 @@ body {
   flex: none;
 }
 
-/* ===== 历史页 ===== */
+/* ===== 检测历史页 ===== */
 .record-page {
   padding-top: 4px;
 }
 .stat-row {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .stat-card {
   flex: 1;
+  min-width: 180px;
   border-radius: 10px;
 }
 .refresh-btn {
   flex: none;
 }
 .pager {
-  margin-top: 16px;
+  display: flex;
   justify-content: flex-end;
+  margin-top: 16px;
 }
 .dialog-body {
   display: flex;
@@ -210,12 +269,70 @@ body {
   color: #606266;
   font-size: 13px;
   margin: 0;
+  text-align: center;
 }
 
-/* ===== 页脚 ===== */
-.app-footer {
-  text-align: center;
-  color: #909399;
+/* ===== 设备监控页 ===== */
+.device-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.conn .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e6a23c;
+  margin-right: 4px;
+}
+.conn .dot.online {
+  background: #67c23a;
+}
+.conn .dot.connecting {
+  background: #e6a23c;
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+.chart {
+  width: 100%;
+  height: 300px;
+}
+.hist-chart {
+  width: 100%;
+  height: 320px;
+}
+.fan-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.fan-label {
+  font-size: 14px;
+  color: #606266;
+}
+.fan-state {
+  margin-left: auto;
+}
+.hint {
   font-size: 12px;
-  line-height: 48px;
+  color: #909399;
+  margin-top: 10px;
+  line-height: 1.7;
+}
+
+/* 表格斑马纹 */
+.striped-table .ant-table-tbody > tr:nth-child(even) > .ant-table-cell {
+  background: #fafbfc;
 }
