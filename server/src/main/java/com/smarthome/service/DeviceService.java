@@ -70,13 +70,38 @@ public class DeviceService {
             speed = 0;   // 关机强制档位归零
         }
 
+        return controlFan(power, speed, "MANUAL");
+    }
+
+    /**
+     * Agent 规则入口：仅在已识别到人的画面上调用。
+     * 当前规则先作为可替换的占位实现：炎热/潮湿开高速风扇，低温关风扇。
+     */
+    public String applyPersonEnvironmentRule() {
+        DeviceSnapshot snapshot = gateway.snapshot();
+        double temperature = snapshot.getTemperature() == null ? 0 : snapshot.getTemperature();
+        double humidity = snapshot.getHumidity() == null ? 0 : snapshot.getHumidity();
+
+        if (temperature < 16 && Boolean.TRUE.equals(snapshot.getFanPower())) {
+            controlFan(false, 0, "AUTO");
+            return "温度低于 16℃，已自动关闭风扇";
+        }
+        if ((temperature > 26 || humidity > 60)
+                && (!Boolean.TRUE.equals(snapshot.getFanPower()) || !Integer.valueOf(2).equals(snapshot.getFanSpeed()))) {
+            controlFan(true, 2, "AUTO");
+            return "检测到人员且环境偏热/潮湿，已自动开启高速风扇";
+        }
+        return "已检测人员并检查温湿度，当前无需调整风扇";
+    }
+
+    private DeviceSnapshot controlFan(boolean power, int speed, String source) {
         DeviceSnapshot snapshot = gateway.controlFan(power, speed);
 
         FanControlLog log = new FanControlLog();
         log.setDeviceId(deviceId);
         log.setPower(power ? 1 : 0);
         log.setSpeed(speed);
-        log.setSource("MANUAL");
+        log.setSource(source);
         fanControlLogMapper.insert(log);
 
         return snapshot;

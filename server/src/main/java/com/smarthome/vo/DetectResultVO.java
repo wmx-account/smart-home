@@ -10,6 +10,10 @@ public class DetectResultVO {
     private Long recordId;
     private String imageUrl;
     private JsonNode detect;
+    /** 本次画面是否已作为检测记录和图片持久化。 */
+    private boolean persisted;
+    /** 预留 Agent 规则的本次处理结果。 */
+    private String agentAction;
 
     public Long getRecordId() {
         return recordId;
@@ -33,5 +37,21 @@ public class DetectResultVO {
 
     public void setDetect(JsonNode detect) {
         this.detect = detect;
+    }
+
+    public boolean isPersisted() {
+        return persisted;
+    }
+
+    public void setPersisted(boolean persisted) {
+        this.persisted = persisted;
+    }
+
+    public String getAgentAction() {
+        return agentAction;
+    }
+
+    public void setAgentAction(String agentAction) {
+        this.agentAction = agentAction;
     }
 }

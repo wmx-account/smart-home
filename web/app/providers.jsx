@@ -4,6 +4,7 @@ import { App as AntApp, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { useEffect } from 'react'
 import { bindMessage } from '@/lib/notify'
+import { CameraMonitorProvider } from '@/components/CameraMonitorProvider'
 
 // 把 antd 的 message 实例注入消息桥，供组件外（axios 拦截器）使用
 function MessageBinder() {
@@ -30,7 +31,7 @@ export default function Providers({ children }) {
     >
       <AntApp>
         <MessageBinder />
-        {children}
+        <CameraMonitorProvider>{children}</CameraMonitorProvider>
       </AntApp>
     </ConfigProvider>
   )

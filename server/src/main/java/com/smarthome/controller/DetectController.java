@@ -53,6 +53,19 @@ public class DetectController {
         return ApiResponse.ok(detectService.detect(file, modelName, conf));
     }
 
+    /** 浏览器摄像头自动检测；无人帧不会持久化。 */
+    @PostMapping(value = "/camera/detect", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<DetectResultVO> detectCameraFrame(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "modelName", defaultValue = "yolo11n.pt") String modelName,
+            @RequestParam(value = "conf", defaultValue = "0.25") Double conf,
+            @RequestParam(value = "source", defaultValue = "PATROL") String source) {
+        if (!"PATROL".equals(source) && !"ALARM".equals(source)) {
+            throw new BusinessException(400, "摄像头检测来源只能为 PATROL 或 ALARM");
+        }
+        return ApiResponse.ok(detectService.detectCameraFrame(file, modelName, conf, source));
+    }
+
     /** 检测历史分页（按时间倒序），列表不含 resultJson 大字段 */
     @GetMapping("/records")
     public ApiResponse<Map<String, Object>> records(

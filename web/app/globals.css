@@ -336,3 +336,17 @@ body {
 .striped-table .ant-table-tbody > tr:nth-child(even) > .ant-table-cell {
   background: #fafbfc;
 }
+
+/* ===== 摄像头检测页 ===== */
+.detect-page { display: flex; flex-direction: column; gap: 16px; }
+.camera-hint, .setting-label { color: #606266; font-size: 13px; line-height: 1.6; }
+.camera-hint { margin: 0 0 12px; }
+.setting-label { margin: 12px 0 6px; }
+.camera-state { margin-top: 12px; }
+.camera-preview { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.camera-processor { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.monitor-result-row { align-items: stretch; }
+.camera-live { display: block; width: 100%; min-height: 280px; max-height: 480px; object-fit: contain; border-radius: 6px; background: #111; }
+.alarm-status { margin-top: 14px; }
+.result-card { min-height: 360px; }
+.result-source { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
