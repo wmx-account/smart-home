@@ -1,104 +1,50 @@
 'use client'
 
-import { Menu } from 'antd'
-import {
-  HomeOutlined,
-  ScanOutlined,
-  DashboardOutlined,
-  HistoryOutlined,
-} from '@ant-design/icons'
+import { Badge } from 'antd'
+import { DashboardOutlined, HistoryOutlined, HomeOutlined, ScanOutlined } from '@ant-design/icons'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getHealth } from '@/lib/detect'
+
+const pages = {
+  '/': { title: '环境监控中心', description: '摄像头监控、智能巡检与人形告警', icon: ScanOutlined },
+  '/device': { title: '设备控制台', description: '查看实时环境，管理家居设备', icon: DashboardOutlined },
+  '/records': { title: '检测记录', description: '回溯已保存的图像与识别结果', icon: HistoryOutlined },
+}
 
 export default function Shell({ children }) {
   const pathname = usePathname()
   const [serverOnline, setServerOnline] = useState(false)
   const [aiOnline, setAiOnline] = useState(false)
+  const page = useMemo(() => pages[pathname] || pages['/'], [pathname])
+  const PageIcon = page.icon
 
-  // 轮询健康检查，在顶部实时显示两个后端服务的在线状态
   useEffect(() => {
     let timer
-    async function ping() {
+    const ping = async () => {
       try {
-        const d = await getHealth()
-        setServerOnline(d.status === 'running')
-        setAiOnline(d.aiPlatform?.status === 'running')
-      } catch {
-        setServerOnline(false)
-        setAiOnline(false)
-      }
+        const data = await getHealth()
+        setServerOnline(data.status === 'running')
+        setAiOnline(data.aiPlatform?.status === 'running')
+      } catch { setServerOnline(false); setAiOnline(false) }
     }
-    ping()
-    timer = setInterval(ping, 15000)
+    ping(); timer = setInterval(ping, 15000)
     return () => clearInterval(timer)
   }, [])
 
-  const items = [
-    {
-      key: '/',
-      label: (
-        <Link href="/" className="nav-link">
-          <ScanOutlined />
-          <span>目标检测</span>
-        </Link>
-      ),
-    },
-    {
-      key: '/device',
-      label: (
-        <Link href="/device" className="nav-link">
-          <DashboardOutlined />
-          <span>设备监控</span>
-        </Link>
-      ),
-    },
-    {
-      key: '/records',
-      label: (
-        <Link href="/records" className="nav-link">
-          <HistoryOutlined />
-          <span>检测历史</span>
-        </Link>
-      ),
-    },
+  const navItems = [
+    { href: '/', label: '环境监控', icon: ScanOutlined },
+    { href: '/device', label: '设备监控', icon: DashboardOutlined },
+    { href: '/records', label: '监控历史', icon: HistoryOutlined },
   ]
 
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <span className="brand-icon">
-            <HomeOutlined />
-          </span>
-          <div className="brand-text">
-            <h1>智能家居边缘智能系统</h1>
-            <p>YOLO 目标检测 · 设备实时监控 · SpringBoot + FastAPI + Next.js(React)</p>
-          </div>
-        </div>
-        <div className="status">
-          <div className={`status-item${serverOnline ? ' on' : ''}`}>
-            <span className="dot" />
-            业务服务 8080<span className="state">{serverOnline ? '在线' : '离线'}</span>
-          </div>
-          <div className={`status-item${aiOnline ? ' on' : ''}`}>
-            <span className="dot" />
-            AI 推理 8000<span className="state">{aiOnline ? '在线' : '离线'}</span>
-          </div>
-        </div>
-      </header>
-
-      <nav className="app-nav">
-        <Menu mode="horizontal" selectedKeys={[pathname]} items={items} className="nav-menu" />
-      </nav>
-
-      <main className="app-main">{children}</main>
-
-      <footer className="app-footer">
-        AI 辅助开发实践项目 · Next.js(React) 静态导出 + Nginx 部署 · 检测图片与记录仅保存在本机
-        MySQL 与 uploads 目录
-      </footer>
-    </div>
-  )
+  return <div className="console-shell">
+    <aside className="console-sidebar">
+      <Link href="/" className="console-brand"><span className="brand-mark"><HomeOutlined /></span><span><strong>智能家居</strong><small>CONTROL CENTER</small></span></Link>
+      <nav className="console-nav"><div className="nav-caption">工作台</div>{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`console-nav-item${pathname === href ? ' active' : ''}`}><Icon /><span>{label}</span>{pathname === href && <i />}</Link>)}</nav>
+      <div className="service-stack"><div className="service-label">系统状态</div><div className="service-line"><Badge status={serverOnline ? 'success' : 'error'} />业务服务 <span>{serverOnline ? '在线' : '离线'}</span></div><div className="service-line"><Badge status={aiOnline ? 'success' : 'error'} />AI 推理 <span>{aiOnline ? '在线' : '离线'}</span></div></div>
+    </aside>
+    <div className="console-content"><header className="console-topbar"><div className="page-heading"><span className="page-icon"><PageIcon /></span><div><h1>{page.title}</h1><p>{page.description}</p></div></div><div className="topbar-status"><span className="pulse" />系统运行中</div></header><main className="console-main">{children}</main></div>
+  </div>
 }
